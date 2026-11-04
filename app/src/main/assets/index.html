@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Felix Sensi</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --accent: #00ffcc; --accent-dim: rgba(0,255,204,.15);
+    --text: #e6edf3; --muted: #8b949e; --log: #3fb950; --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100%; overflow-x: hidden;
+  }
+  body { padding: 16px; display: flex; justify-content: center; }
+  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
+
+  header { text-align: center; padding: 12px 0 6px; }
+  header h1 {
+    font-size: clamp(1.6rem, 7vw, 2.1rem); font-weight: 800; color: var(--accent);
+    text-shadow: 0 0 8px rgba(0,255,204,.7), 0 0 22px rgba(0,255,204,.35);
+    letter-spacing: .5px; word-break: break-word;
+  }
+  header p { margin-top: 6px; font-size: .82rem; color: var(--muted); letter-spacing: .4px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .card-title { font-size: .78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .desc { font-size: .75rem; color: var(--muted); margin-top: -4px; }
+
+  .btn {
+    width: 100%; border: none; border-radius: var(--radius); padding: 14px 16px;
+    font-size: .95rem; font-weight: 700; letter-spacing: .6px; cursor: pointer;
+    transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+    user-select: none; -webkit-user-select: none;
+  }
+  .btn:active { transform: scale(.95); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-outline {
+    background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+    box-shadow: 0 0 6px rgba(0,255,204,.35), inset 0 0 6px rgba(0,255,204,.08);
+  }
+  .btn-outline.granted {
+    background: var(--accent-dim);
+    box-shadow: 0 0 14px rgba(0,255,204,.6), inset 0 0 10px rgba(0,255,204,.15);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #00ffcc 0%, #00b894 55%, #00e0ff 100%);
+    color: #04110e; font-size: 1rem;
+    box-shadow: 0 0 16px rgba(0,255,204,.55), 0 4px 18px rgba(0,255,204,.25);
+  }
+  .btn-primary:active { box-shadow: 0 0 8px rgba(0,255,204,.4); }
+  .btn-ghost { background: #21262d; color: var(--text); border: 1px solid var(--border); padding: 11px 14px; font-size: .85rem; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; color: #f85149; border: 1.5px solid #f85149; padding: 11px 14px; font-size: .85rem; }
+
+  .status { margin-top: 10px; font-size: .8rem; color: var(--muted); text-align: center; }
+  .status .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #f85149; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 6px #f85149;
+  }
+  .status.ok .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .info-item { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .info-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .info-value { margin-top: 4px; font-size: .95rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .info-value.accent { color: var(--accent); text-shadow: 0 0 6px rgba(0,255,204,.5); }
+
+  .log-box {
+    background: #000; border: 1px solid var(--border); border-radius: var(--radius);
+    height: 220px; overflow-y: auto; padding: 12px;
+    font-family: Consolas, "Courier New", "Roboto Mono", monospace;
+    font-size: .78rem; line-height: 1.6; color: var(--log);
+    word-break: break-all; scroll-behavior: smooth;
+  }
+  .log-line { white-space: pre-wrap; }
+  .log-line.error { color: #f85149; }
+  .log-line.warn { color: #d29922; }
+  .log-line .ts { color: #58a6ff; }
+  .log-line .tag { color: var(--accent); }
+  .log-box::-webkit-scrollbar { width: 6px; }
+  .log-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+  .log-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  footer { text-align: center; font-size: .75rem; color: var(--muted); padding: 8px 0 16px; }
+  @media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>⚡️ Felix Sensi 🪽</h1>
+    <p>Advanced Touch Sensitivity &amp; System Optimizer</p>
+  </header>
+
+  <section class="card">
+    <div class="card-title">Quyền hệ thống</div>
+    <button id="btnShizuku" class="btn btn-outline" onclick="handleRequestShizuku()">CẤP QUYỀN SHIZUKU</button>
+    <div id="shizukuStatus" class="status">
+      <span class="dot"></span><span id="shizukuText">Chưa cấp quyền</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Chức năng chính</div>
+    <button id="btnOptimize" class="btn btn-primary" onclick="handleOptimize()">KÍCH HOẠT TỐI ƯU ĐỘ NHẠY</button>
+  </section>
+
+  <!-- Các nhóm nút được tạo tự động từ mảng ACTIONS bên dưới -->
+  <div id="actionGroups" class="stack"></div>
+
+  <section class="card">
+    <div class="card-title">Thông số thiết bị</div>
+    <div class="grid">
+      <div class="info-item"><div class="info-label">Model</div><div class="info-value" id="infoModel">--</div></div>
+      <div class="info-item"><div class="info-label">Android</div><div class="info-value" id="infoAndroid">--</div></div>
+      <div class="info-item"><div class="info-label">Resolution</div><div class="info-value" id="infoResolution">--</div></div>
+      <div class="info-item"><div class="info-label">Refresh Rate (Hz)</div><div class="info-value accent" id="infoRefresh">--</div></div>
+    </div>
+    <button class="btn btn-ghost" onclick="refreshSystemInfo()">Refresh System Info</button>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Nhật ký lệnh</div>
+    <div id="logBox" class="log-box"></div>
+    <div class="log-actions"><button class="btn btn-ghost" onclick="clearLog()">Clear Log</button></div>
+  </section>
+
+  <footer>Felix Sensi 🪽 © 2026</footer>
+</div>
+
+<script>
