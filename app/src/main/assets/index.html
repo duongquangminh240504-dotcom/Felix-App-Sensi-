@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Felix Sensi</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --accent: #00ffcc; --accent-dim: rgba(0,255,204,.15);
+    --text: #e6edf3; --muted: #8b949e; --log: #3fb950; --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100%; overflow-x: hidden;
+  }
+  body { padding: 16px; display: flex; justify-content: center; }
+  .app { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
+
+  header { text-align: center; padding: 12px 0 6px; }
+  header h1 {
+    font-size: clamp(1.6rem, 7vw, 2.1rem); font-weight: 800; color: var(--accent);
+    text-shadow: 0 0 8px rgba(0,255,204,.7), 0 0 22px rgba(0,255,204,.35);
+    letter-spacing: .5px; word-break: break-word;
+  }
+  header p { margin-top: 6px; font-size: .82rem; color: var(--muted); letter-spacing: .4px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .card-title { font-size: .78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .desc { font-size: .75rem; color: var(--muted); margin-top: -4px; }
+
+  .btn {
+    width: 100%; border: none; border-radius: var(--radius); padding: 14px 16px;
+    font-size: .95rem; font-weight: 700; letter-spacing: .6px; cursor: pointer;
+    transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease;
+    user-select: none; -webkit-user-select: none;
+  }
+  .btn:active { transform: scale(.95); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-outline {
+    background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+    box-shadow: 0 0 6px rgba(0,255,204,.35), inset 0 0 6px rgba(0,255,204,.08);
+  }
+  .btn-outline.granted {
+    background: var(--accent-dim);
+    box-shadow: 0 0 14px rgba(0,255,204,.6), inset 0 0 10px rgba(0,255,204,.15);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #00ffcc 0%, #00b894 55%, #00e0ff 100%);
+    color: #04110e; font-size: 1rem;
+    box-shadow: 0 0 16px rgba(0,255,204,.55), 0 4px 18px rgba(0,255,204,.25);
+  }
+  .btn-primary:active { box-shadow: 0 0 8px rgba(0,255,204,.4); }
+  .btn-ghost { background: #21262d; color: var(--text); border: 1px solid var(--border); padding: 11px 14px; font-size: .85rem; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; color: #f85149; border: 1.5px solid #f85149; padding: 11px 14px; font-size: .85rem; }
+
+  .status { margin-top: 10px; font-size: .8rem; color: var(--muted); text-align: center; }
+  .status .dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #f85149; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 6px #f85149;
+  }
+  .status.ok .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .info-item { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .info-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .info-value { margin-top: 4px; font-size: .95rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .info-value.accent { color: var(--accent); text-shadow: 0 0 6px rgba(0,255,204,.5); }
+
+  .log-box {
+    background: #000; border: 1px solid var(--border); border-radius: var(--radius);
+    height: 220px; overflow-y: auto; padding: 12px;
+    font-family: Consolas, "Courier New", "Roboto Mono", monospace;
+    font-size: .78rem; line-height: 1.6; color: var(--log);
+    word-break: break-all; scroll-behavior: smooth;
+  }
+  .log-line { white-space: pre-wrap; }
+  .log-line.error { color: #f85149; }
+  .log-line.warn { color: #d29922; }
+  .log-line .ts { color: #58a6ff; }
+  .log-line .tag { color: var(--accent); }
+  .log-box::-webkit-scrollbar { width: 6px; }
+  .log-box::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+  .log-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  footer { text-align: center; font-size: .75rem; color: var(--muted); padding: 8px 0 16px; }
+  @media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>⚡️ Felix Sensi 🪽</h1>
+    <p>Advanced Touch Sensitivity &amp; System Optimizer</p>
+  </header>
+
+  <section class="card">
+    <div class="card-title">Quyền hệ thống</div>
+    <button id="btnShizuku" class="btn btn-outline" onclick="handleRequestShizuku()">CẤP QUYỀN SHIZUKU</button>
+    <div id="shizukuStatus" class="status">
+      <span class="dot"></span><span id="shizukuText">Chưa cấp quyền</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Chức năng chính</div>
+    <button id="btnOptimize" class="btn btn-primary" onclick="handleOptimize()">KÍCH HOẠT TỐI ƯU ĐỘ NHẠY</button>
+  </section>
+
+  <!-- Các nhóm nút được tạo tự động từ mảng ACTIONS bên dưới -->
+  <div id="actionGroups" class="stack"></div>
+
+  <section class="card">
+    <div class="card-title">Thông số thiết bị</div>
+    <div class="grid">
+      <div class="info-item"><div class="info-label">Model</div><div class="info-value" id="infoModel">--</div></div>
+      <div class="info-item"><div class="info-label">Android</div><div class="info-value" id="infoAndroid">--</div></div>
+      <div class="info-item"><div class="info-label">Resolution</div><div class="info-value" id="infoResolution">--</div></div>
+      <div class="info-item"><div class="info-label">Refresh Rate (Hz)</div><div class="info-value accent" id="infoRefresh">--</div></div>
+    </div>
+    <button class="btn btn-ghost" onclick="refreshSystemInfo()">Refresh System Info</button>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Nhật ký lệnh</div>
+    <div id="logBox" class="log-box"></div>
+    <div class="log-actions"><button class="btn btn-ghost" onclick="clearLog()">Clear Log</button></div>
+  </section>
+
+  <footer>Felix Sensi 🪽 © 2026</footer>
+</div>
+
+<script>
+/* =========================================================
+   CẤU HÌNH LỆNH
+   ========================================================= */
+const OPTIMIZE_COMMANDS = [
+  "settings put global window_animation_scale 0.5",
+  "settings put global transition_animation_scale 0.5",
+  "settings put global animator_duration_scale 0.5",
+  "settings put system peak_refresh_rate 120.0",
+  "settings put system min_refresh_rate 120.0",
+  "settings put system pointer_speed 8",
+  "settings put secure touch_exploration_enabled 0"
+];
+
+const CHECK_KEYS = [
+  "system peak_refresh_rate",
+  "system min_refresh_rate",
+  "system pointer_speed",
+  "global window_animation_scale",
+  "global transition_animation_scale",
+  "global animator_duration_scale",
+  "global low_power",
+  "system show_touches",
+  "system pointer_location"
+];
+
+/* Mỗi nhóm có tiêu đề và danh sách nút. Thêm nút mới chỉ cần thêm một dòng vào đây. */
+const ACTIONS = [
+  {
+    title: "Tăng độ nhạy",
+    items: [
+      {
+        label: "TĂNG ĐỘ NHẠY CHUỘT / CẢM ỨNG",
+        desc: "pointer_speed = 7 (mức tối đa), tắt touch exploration",
+        style: "btn-primary",
+        cmds: [
+          "settings put system pointer_speed 7",
+          "settings put secure touch_exploration_enabled 0"
+        ]
+      },
+      {
+        label: "ĐỘ NHẠY VỪA PHẢI",
+        desc: "pointer_speed = 3",
+        style: "btn-ghost",
+        cmds: ["settings put system pointer_speed 3"]
+      }
+    ]
+  },
+  {
+    title: "Giảm lag",
+    items: [
+      {
+        label: "GIẢM LAG ANIMATION",
+        desc: "Thu hiệu ứng chuyển cảnh còn 0.5x",
+        style: "btn-outline",
+        cmds: [
+          "settings put global window_animation_scale 0.5",
+          "settings put global transition_animation_scale 0.5",
+          "settings put global animator_duration_scale 0.5"
+        ]
+      },
+      {
+        label: "TẮT HOÀN TOÀN ANIMATION",
+        desc: "Mọi hiệu ứng về 0, cảm giác mượt nhất nhưng không có chuyển động",
+        style: "btn-outline",
+        cmds: [
+          "settings put global window_animation_scale 0",
+          "settings put global transition_animation_scale 0",
+          "settings put global animator_duration_scale 0"
+        ]
+      },
+      {
+        label: "BẬT 120HZ",
+        desc: "peak_refresh_rate và min_refresh_rate = 120 (chỉ máy hỗ trợ)",
+        style: "btn-outline",
+        cmds: [
+          "settings put system peak_refresh_rate 120.0",
+          "settings put system min_refresh_rate 120.0"
+        ]
+      },
+      {
+        label: "TẮT CHẾ ĐỘ TIẾT KIỆM PIN",
+        desc: "low_power = 0, máy không tự giới hạn hiệu năng",
+        style: "btn-ghost",
+        cmds: ["settings put global low_power 0"]
+      }
+    ]
+  },
+  {
+    title: "Tiện ích",
+    items: [
+      {
+        label: "HIỆN CHẠM MÀN HÌNH",
+        desc: "Hiện vòng tròn khi chạm, tiện để kiểm tra độ nhạy",
+        style: "btn-ghost",
+        cmds: ["settings put system show_touches 1"]
+      },
+      {
+        label: "HIỆN TỌA ĐỘ CHẠM",
+        desc: "Hiện đường kẻ và tọa độ khi chạm, dùng để đo độ trễ",
+        style: "btn-ghost",
+        cmds: ["settings put system pointer_location 1"]
+      },
+      {
+        label: "TẮT HIỂN THỊ CHẠM",
+        desc: "Tắt cả vòng tròn và tọa độ",
+        style: "btn-ghost",
+        cmds: [
+          "settings put system show_touches 0",
+          "settings put system pointer_location 0"
+        ]
+      }
+    ]
+  },
+  {
+    title: "Kiểm tra & khôi phục",
+    items: [
+      {
+        label: "XEM THÔNG SỐ HIỆN TẠI",
+        desc: "Đọc giá trị các setting đang dùng và ghi vào nhật ký",
+        style: "btn-ghost",
+        cmds: CHECK_KEYS.map(k => `settings get ${k}`)
+      },
+      {
+        label: "KHÔI PHỤC MẶC ĐỊNH",
+        desc: "Animation về 1x, độ nhạy về 0, xóa cài đặt 120Hz, tắt hiển thị chạm",
+        style: "btn-danger",
+        cmds: [
+          "settings put global window_animation_scale 1",
+          "settings put global transition_animation_scale 1",
+          "settings put global animator_duration_scale 1",
+          "settings put system pointer_speed 0",
+          "settings delete system peak_refresh_rate",
+          "settings delete system min_refresh_rate",
+          "settings put system show_touches 0",
+          "settings put system pointer_location 0"
+        ]
+      }
+    ]
+  }
+];
+
+const LOG_TAG = "#FelixSensi";
+let shizukuGranted = false;
+let busy = false;
+
+/* =========================================================
+   LOG
+   ========================================================= */
+function timestamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+/** Ghi log. Mọi dòng đều kết thúc bằng #FelixSensi. */
+function log(message, type = "info") {
+  const box = document.getElementById("logBox");
+  const line = document.createElement("div");
+  line.className = `log-line ${type}`;
+  line.innerHTML =
+    `<span class="ts">[${timestamp()}]</span> ` +
+    `${escapeHtml(String(message))} ` +
+    `<span class="tag">${LOG_TAG}</span>`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById("logBox").innerHTML = "";
+  log("Log cleared.");
+}
+
+/* =========================================================
+   THÔNG SỐ THIẾT BỊ
+   ========================================================= */
+function getDeviceModel() {
+  const ua = navigator.userAgent;
+  const m = ua.match(/Android[^;]*;\s*([^)]+?)\s*(Build|\))/i);
+  if (m && m[1]) return m[1].trim();
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua)) return "iPad";
+  return "Unknown";
+}
+
+function getAndroidVersion() {
+  const m = navigator.userAgent.match(/Android\s([\d.]+)/i);
+  return m ? m[1] : "N/A";
+}
+
+function getResolution() {
+  const dpr = window.devicePixelRatio || 1;
+  return `${Math.round(screen.width * dpr)} x ${Math.round(screen.height * dpr)}`;
+}
+
+/** WebView không cung cấp refresh rate trực tiếp, ước lượng bằng rAF. */
+function estimateRefreshRate(sampleMs = 1000) {
+  return new Promise(resolve => {
+    let frames = 0;
+    const start = performance.now();
+    function tick(now) {
+      frames++;
+      if (now - start < sampleMs) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve(Math.round(frames / ((now - start) / 1000)));
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+async function refreshSystemInfo() {
+  log("Refreshing system info...");
+  document.getElementById("infoModel").textContent = getDeviceModel();
+  document.getElementById("infoAndroid").textContent = getAndroidVersion();
+  document.getElementById("infoResolution").textContent = getResolution();
+  document.getElementById("infoRefresh").textContent = "...";
+
+  const hz = await estimateRefreshRate();
+  document.getElementById("infoRefresh").textContent = `${hz} Hz`;
+  log(`Model=${getDeviceModel()}, Android=${getAndroidVersion()}, Resolution=${getResolution()}, Refresh=${hz}Hz`);
+}
+
+/* =========================================================
+   CẦU NỐI ANDROID
+   ========================================================= */
+const hasBridge = () =>
+  typeof window.AndroidInterface !== "undefined" && window.AndroidInterface !== null;
+
+/** Chạy một lệnh shell qua Shizuku. Trả về Promise<{ok, output}>. */
+function runShellCommand(cmd) {
+  return new Promise(resolve => {
+    if (hasBridge() && typeof window.AndroidInterface.runShellCommand === "function") {
+      try {
+        const out = window.AndroidInterface.runShellCommand(cmd);
+        resolve({ ok: true, output: String(out ?? "") });
+      } catch (e) {
+        resolve({ ok: false, output: e.message || String(e) });
+      }
+    } else {
+      setTimeout(() => resolve({ ok: true, output: "(simulated) OK" }), 150);
+    }
+  });
+}
+
+/** Native sẽ gọi lại window.onShizukuResult(granted, message). */
+function requestShizukuPermission() {
+  if (hasBridge() && typeof window.AndroidInterface.requestShizukuPermission === "function") {
+    window.AndroidInterface.requestShizukuPermission();
+  } else {
+    setTimeout(() => window.onShizukuResult(true, "Simulation mode"), 400);
+  }
+}
+
+window.onNativeLog = function (msg, type) {
+  log(msg, type || "info");
+};
+
+window.onShizukuResult = function (granted, message) {
+  if (message) log(message, granted ? "info" : "warn");
+  shizukuGranted = !!granted;
+  const btn = document.getElementById("btnShizuku");
+  const txt = document.getElementById("shizukuText");
+  const status = document.getElementById("shizukuStatus");
+
+  if (shizukuGranted) {
+    btn.classList.add("granted");
+    btn.textContent = "SHIZUKU ĐÃ CẤP QUYỀN";
+    txt.textContent = "Shizuku: Granted";
+    status.classList.add("ok");
+    log("Shizuku permission granted.");
+  } else {
+    btn.classList.remove("granted");
+    btn.textContent = "CẤP QUYỀN SHIZUKU";
+    txt.textContent = "Shizuku: Denied";
+    status.classList.remove("ok");
+    log("Shizuku permission denied.", "error");
+  }
+};
+
+function handleRequestShizuku() {
+  log("Requesting Shizuku permission...");
+  requestShizukuPermission();
+}
+
+/* =========================================================
+   CHẠY DANH SÁCH LỆNH
+   ========================================================= */
+function setButtonsDisabled(disabled) {
+  document.querySelectorAll("button.action-btn, #btnOptimize").forEach(b => b.disabled = disabled);
+}
+
+/** Chạy lần lượt các lệnh, ghi log từng bước. */
+async function runCommands(title, cmds) {
+  if (busy) {
+    log("Đang chạy lệnh khác, vui lòng đợi.", "warn");
+    return;
+  }
+  if (!shizukuGranted && !hasBridge()) {
+    log("Shizuku not granted. Simulation mode active.", "warn");
+  } else if (!shizukuGranted) {
+    log("Shizuku not granted. Please grant permission first.", "error");
+    return;
+  }
+
+  busy = true;
+  setButtonsDisabled(true);
+  log(`=== ${title} ===`);
+
+  let failed = 0;
+  for (const cmd of cmds) {
+    log(`$ ${cmd}`);
+    const res = await runShellCommand(cmd);
+    if (res.ok) {
+      if (res.output.trim()) log(res.output.trim());
+      else log("OK");
+    } else {
+      failed++;
+      log(`FAILED: ${res.output}`, "error");
+    }
+  }
+
+  log(failed === 0
+    ? `${title}: completed successfully.`
+    : `${title}: finished with ${failed} error(s).`,
+    failed === 0 ? "info" : "warn");
+
+  busy = false;
+  setButtonsDisabled(false);
+}
+
+function handleOptimize() {
+  runCommands("KÍCH HOẠT TỐI ƯU ĐỘ NHẠY", OPTIMIZE_COMMANDS);
+}
+
+/* =========================================================
+   TẠO GIAO DIỆN NÚT TỰ ĐỘNG
+   ========================================================= */
+function buildActionGroups() {
+  const container = document.getElementById("actionGroups");
+
+  ACTIONS.forEach(group => {
+    const card = document.createElement("section");
+    card.className = "card";
+
+    const title = document.createElement("div");
+    title.className = "card-title";
+    title.textContent = group.title;
+    card.appendChild(title);
+
+    const stack = document.createElement("div");
+    stack.className = "stack";
+
+    group.items.forEach(item => {
+      const btn = document.createElement("button");
+      btn.className = `btn action-btn ${item.style}`;
+      btn.textContent = item.label;
+      btn.addEventListener("click", () => runCommands(item.label, item.cmds));
+      stack.appendChild(btn);
+
+      if (item.desc) {
+        const d = document.createElement("div");
+        d.className = "desc";
+        d.textContent = item.desc;
+        stack.appendChild(d);
+      }
+    });
+
+    card.appendChild(stack);
+    container.appendChild(card);
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  buildActionGroups();
+  log("Felix Sensi initialized.");
+  refreshSystemInfo();
+});
+</script>
+</body>
+  </html>
